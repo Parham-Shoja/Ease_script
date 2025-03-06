@@ -12,7 +12,7 @@ def set_weighted_tangents():
     
     for curve in selected_curves:
         cmds.keyTangent(curve, edit=True, weightedTangents=True)
-    a
+    
     cmds.inViewMessage(amg="Weighted Tangents Applied!", pos="midCenter", fade=True)
 
 
@@ -98,7 +98,8 @@ def invert_keyframe_timing():
 
     cmds.inViewMessage(amg="Keyframe Timing Inverted for Multiple Keyframes!", pos="midCenter", fade=True)
 
-
+    # فعال‌سازی خودکار Weighted Tangents
+    set_weighted_tangents()
 
 def apply_bounce_effect(bounce_strength=1.0, frame_range=2, bounce_count=3, bounce_range=0.1):
     """Applies a bounce effect to the selected keyframes with adjustable bounce strength, range, and count."""
@@ -122,7 +123,8 @@ def apply_bounce_effect(bounce_strength=1.0, frame_range=2, bounce_count=3, boun
                 cmds.setKeyframe(curve, time=time + i * frame_range, value=bounce_value)
     
     cmds.inViewMessage(amg="Bounce Effect Applied!", pos="midCenter", fade=True)
-
+     # فعال‌سازی خودکار Weighted Tangents
+    set_weighted_tangents()
 
 def apply_ease(factor=1.0, ease_type='in'):
     """Applies an ease-in or ease-out effect to selected keyframes in the Graph Editor."""
@@ -180,7 +182,8 @@ def apply_jet():
             cmds.keyTangent(curve, edit=True, time=(time, time), inWeight=1, outWeight=50)
     
     cmds.inViewMessage(amg="Jet Motion Applied (Slow to Fast)!", pos="midCenter", fade=True)
-
+     # فعال‌سازی خودکار Weighted Tangents
+    set_weighted_tangents()
 def apply_brake():
     """Ease-out effect for braking (fast to slow)."""
     selected_curves = cmds.keyframe(query=True, selected=True, name=True)
@@ -196,7 +199,8 @@ def apply_brake():
             cmds.keyTangent(curve, edit=True, time=(time, time), inWeight=50, outWeight=1)
     
     cmds.inViewMessage(amg="Brake Motion Applied (Fast to Slow)!", pos="midCenter", fade=True)
-
+     # فعال‌سازی خودکار Weighted Tangents
+    set_weighted_tangents()
 
 
 def apply_wiggle_effect(amplitude=0.5, frequency=1.0, frame_distance=1, intensity=1.0):
@@ -221,7 +225,8 @@ def apply_wiggle_effect(amplitude=0.5, frequency=1.0, frame_distance=1, intensit
                 cmds.setKeyframe(curve, time=time + i * frame_distance, value=wiggle_value)
     
     cmds.inViewMessage(amg="Wiggle Effect Applied!", pos="midCenter", fade=True)
-
+     # فعال‌سازی خودکار Weighted Tangents
+    set_weighted_tangents()
 
 
 def create_ui():
@@ -229,7 +234,7 @@ def create_ui():
     if cmds.window("easeWindow", exists=True):
         cmds.deleteUI("easeWindow")
     
-    window = cmds.window("easeWindow", title="Ease Tool", widthHeight=(250, 550))
+    window = cmds.window("easeWindow", title="Ease Tool", widthHeight=(250, 650))
     cmds.columnLayout(adjustableColumn=True)
 
     cmds.button(label="Instructions", command=lambda _: show_instructions(), bgc=(0.8, 0.8, 0.8))
