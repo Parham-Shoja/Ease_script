@@ -1,0 +1,301 @@
+
+import maya.cmds as cmds
+import random
+
+def set_weighted_tangents():
+    """Automatically enables Weighted Tangents for selected keyframes."""
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        cmds.keyTangent(curve, edit=True, weightedTangents=True)
+    a
+    cmds.inViewMessage(amg="Weighted Tangents Applied!", pos="midCenter", fade=True)
+
+
+def show_instructions():
+    """Shows instructions for the features in both Persian and English."""
+    instructions = """
+    Instructions:
+
+    1. Apply Ease In/Out:
+    - Use this option to smoothly ease the animation at the start (Ease In) or at the end (Ease Out) of the selected keyframes.
+    
+    2. Quick Motion Styles:
+    - Jet Motion: Transitions from slow to fast motion.
+    - Brake Motion: Transitions from fast to slow motion.
+    - Smooth Motion: A smooth transition from slow to fast and back to slow motion.
+    
+    3. Bounce Effect:
+    - Apply a bouncing motion effect to selected keyframes. You can adjust the bounce strength, range, count, and frame range.
+
+    4. Wiggle Effect:
+    - Add a wiggle effect to your keyframes. Customize the amplitude, frequency, distance between wiggles, and intensity to create random fluctuations in motion.
+
+    توضیحات به فارسی:
+
+    1. اعمال Ease In/Out:
+    - این گزینه به شما این امکان را می‌دهد که حرکت انیمیشن را به طور نرم در ابتدای (Ease In) یا انتهای (Ease Out) کلید فریم‌های انتخاب‌شده انجام دهید.
+    
+    2. سبک‌های حرکت سریع:
+    - Jet Motion: انتقال از حرکت آهسته به سریع.
+    - Brake Motion: انتقال از حرکت سریع به آهسته.
+    - Smooth Motion: انتقال صاف از آهسته به سریع و دوباره به آهسته.
+    
+    3. افکت بونس:
+    - یک افکت بونس به کلید فریم‌های انتخاب‌شده اعمال کنید. می‌توانید قدرت، دامنه، تعداد و فاصله فریم‌ها بین بونس‌ها را تنظیم کنید.
+
+    4. افکت ویگل:
+    - یک افکت ویگل به کلید فریم‌ها اضافه کنید. می‌توانید دامنه، فرکانس، فاصله بین ویگل‌ها و شدت را تنظیم کنید تا نوسانات تصادفی در حرکت ایجاد کنید.
+    """
+    
+    cmds.confirmDialog(title="Instructions", message=instructions, button=["OK"])
+
+
+def invert_keyframe_timing():
+    """Swaps the timing of selected keyframes while maintaining values and easing."""
+    
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        
+        if not key_times or len(key_times) < 2:
+            cmds.warning("Please select at least two keyframes!")
+            return
+        
+        key_times = sorted(key_times)
+        key_values = []
+        key_easing = []
+
+        for time in key_times:
+            value = cmds.keyframe(curve, query=True, time=(time, time), valueChange=True)[0]
+            in_angle = cmds.keyTangent(curve, query=True, time=(time, time), inAngle=True)[0]
+            out_angle = cmds.keyTangent(curve, query=True, time=(time, time), outAngle=True)[0]
+            in_weight = cmds.keyTangent(curve, query=True, time=(time, time), inWeight=True)[0]
+            out_weight = cmds.keyTangent(curve, query=True, time=(time, time), outWeight=True)[0]
+            
+            key_values.append(value)
+            key_easing.append((in_angle, out_angle, in_weight, out_weight))
+        
+        for i in range(len(key_times)):
+            time1, time2 = key_times[i], key_times[len(key_times) - 1 - i]
+            value1, value2 = key_values[i], key_values[len(key_values) - 1 - i]
+            in_angle1, out_angle1, in_weight1, out_weight1 = key_easing[i]
+            in_angle2, out_angle2, in_weight2, out_weight2 = key_easing[len(key_easing) - 1 - i]
+
+            cmds.setKeyframe(curve, time=time2, value=value1)
+            cmds.setKeyframe(curve, time=time1, value=value2)
+
+            cmds.keyTangent(curve, edit=True, time=(time1, time1), inAngle=in_angle2, outAngle=out_angle2, inWeight=in_weight2, outWeight=out_weight2)
+            cmds.keyTangent(curve, edit=True, time=(time2, time2), inAngle=in_angle1, outAngle=out_angle1, inWeight=in_weight1, outWeight=out_weight1)
+
+    cmds.inViewMessage(amg="Keyframe Timing Inverted for Multiple Keyframes!", pos="midCenter", fade=True)
+
+
+
+def apply_bounce_effect(bounce_strength=1.0, frame_range=2, bounce_count=3, bounce_range=0.1):
+    """Applies a bounce effect to the selected keyframes with adjustable bounce strength, range, and count."""
+    
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        
+        if not key_times:
+            continue
+        
+        for time in key_times:
+            value = cmds.keyframe(curve, query=True, time=(time, time), valueChange=True)[0]
+            
+            for i in range(bounce_count):
+                bounce_value = value + random.uniform(-bounce_range, bounce_range) * bounce_strength * (1 - (i / bounce_count))
+                cmds.setKeyframe(curve, time=time + i * frame_range, value=bounce_value)
+    
+    cmds.inViewMessage(amg="Bounce Effect Applied!", pos="midCenter", fade=True)
+
+
+def apply_ease(factor=1.0, ease_type='in'):
+    """Applies an ease-in or ease-out effect to selected keyframes in the Graph Editor."""
+    
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected in Graph Editor!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        if not key_times:
+            continue
+        
+        for time in key_times:
+            if ease_type == 'in':
+                cmds.keyTangent(curve, edit=True, time=(time, time), inWeight=factor * 10, inAngle=0)
+            elif ease_type == 'out':
+                cmds.keyTangent(curve, edit=True, time=(time, time), outWeight=factor * 10, outAngle=0)
+    
+    # فعال‌سازی خودکار Weighted Tangents
+    set_weighted_tangents()
+    
+    cmds.inViewMessage(amg='Ease {} Applied with factor <hl>{}</hl>'.format(ease_type.capitalize(), factor), pos='midCenter', fade=True)
+
+def apply_custom_ease(in_factor, out_factor):
+    """Applies custom ease-in and ease-out based on user input."""
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        if not key_times:
+            continue
+        for time in key_times:
+            cmds.keyTangent(curve, edit=True, time=(time, time), inWeight=in_factor, outWeight=out_factor)
+    
+    cmds.inViewMessage(amg="Custom Ease Applied!", pos="midCenter", fade=True)
+
+
+def apply_jet():
+    """Ease-in effect for a jet-like acceleration (slow to fast)."""
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        if not key_times:
+            continue
+        for time in key_times:
+            cmds.keyTangent(curve, edit=True, time=(time, time), inWeight=1, outWeight=50)
+    
+    cmds.inViewMessage(amg="Jet Motion Applied (Slow to Fast)!", pos="midCenter", fade=True)
+
+def apply_brake():
+    """Ease-out effect for braking (fast to slow)."""
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        if not key_times:
+            continue
+        for time in key_times:
+            cmds.keyTangent(curve, edit=True, time=(time, time), inWeight=50, outWeight=1)
+    
+    cmds.inViewMessage(amg="Brake Motion Applied (Fast to Slow)!", pos="midCenter", fade=True)
+
+
+
+def apply_wiggle_effect(amplitude=0.5, frequency=1.0, frame_distance=1, intensity=1.0):
+    """Applies a wiggle effect to the selected keyframes with adjustable amplitude, frequency, frame distance, and intensity."""
+    selected_curves = cmds.keyframe(query=True, selected=True, name=True)
+    if not selected_curves:
+        cmds.warning("No keyframes selected!")
+        return
+    
+    for curve in selected_curves:
+        key_times = cmds.keyframe(curve, query=True, selected=True, timeChange=True)
+        
+        if not key_times:
+            continue
+        
+        for time in key_times:
+            value = cmds.keyframe(curve, query=True, time=(time, time), valueChange=True)[0]
+            
+            # Apply wiggle effect with random amplitude and intensity based on frequency and frame distance
+            for i in range(int(frequency)):
+                wiggle_value = value + random.uniform(-amplitude, amplitude) * intensity
+                cmds.setKeyframe(curve, time=time + i * frame_distance, value=wiggle_value)
+    
+    cmds.inViewMessage(amg="Wiggle Effect Applied!", pos="midCenter", fade=True)
+
+
+
+def create_ui():
+    """Creates a simple UI for setting ease factor and applying ease-in/ease-out."""
+    if cmds.window("easeWindow", exists=True):
+        cmds.deleteUI("easeWindow")
+    
+    window = cmds.window("easeWindow", title="Ease Tool", widthHeight=(250, 550))
+    cmds.columnLayout(adjustableColumn=True)
+
+    cmds.button(label="Instructions", command=lambda _: show_instructions(), bgc=(0.8, 0.8, 0.8))
+    cmds.separator(height=10, style="in")
+
+
+    cmds.text(label="Set Ease Factor (1-10):")
+    ease_factor_field = cmds.intSliderGrp(field=True, min=1, max=10, value=5)
+    cmds.button(label="Apply Ease In", command=lambda _: apply_ease(cmds.intSliderGrp(ease_factor_field, query=True, value=True), 'in'))
+    cmds.button(label="Apply Ease Out", command=lambda _: apply_ease(cmds.intSliderGrp(ease_factor_field, query=True, value=True), 'out'))
+    
+    cmds.separator(height=10, style="in")
+    
+    cmds.text(label="Quick Motion Styles:")
+    cmds.separator(height=10, style="in")
+    cmds.button(label="Jet Motion (Slow to Fast)", command=lambda _: apply_jet(), bgc=(0.2, 0.8, 1))
+    cmds.button(label="Brake Motion (Fast to Slow)", command=lambda _: apply_brake(), bgc=(1, 0.6, 0.2))
+    
+    cmds.separator(height=10, style="in")
+    
+
+    cmds.separator(height=10, style="in")
+    
+    cmds.text(label="Advanced Tools:")
+
+    cmds.separator(height=10, style="in")
+
+    cmds.button(label="Invert Keyframe Timing", command=lambda _: invert_keyframe_timing(), bgc=(0.3, 0.3, 1))
+    
+    cmds.separator(height=10, style="in")
+    
+    cmds.text(label="Bounce Settings:")
+    cmds.separator(height=10, style="in")
+
+    bounce_factor_field = cmds.floatSliderGrp(field=True, min=0.1, max=5.0, value=1.0, label="Bounce Strength:")
+    bounce_range_field = cmds.floatSliderGrp(field=True, min=0.01, max=1.0, value=0.1, label="Bounce Range:")
+    bounce_count_field = cmds.intSliderGrp(field=True, min=1, max=10, value=3, label="Bounce Count:")
+    frame_range_field = cmds.intSliderGrp(field=True, min=1, max=10, value=2, label="Frame Between:")
+    cmds.button(label="Apply Bounce Effect", command=lambda _: apply_bounce_effect(
+        cmds.floatSliderGrp(bounce_factor_field, query=True, value=True),
+        cmds.intSliderGrp(frame_range_field, query=True, value=True),
+        cmds.intSliderGrp(bounce_count_field, query=True, value=True),
+        cmds.floatSliderGrp(bounce_range_field, query=True, value=True)
+    ), bgc=(0.5, 0.8, 1))
+    
+    cmds.separator(height=10, style="in")
+    
+    cmds.text(label="Wiggle Settings:")
+    cmds.separator(height=10, style="in")
+
+    wiggle_amplitude_field = cmds.floatSliderGrp(field=True, min=0.01, max=1.0, value=0.5, label="Wiggle Amplitude:")
+    wiggle_frequency_field = cmds.floatSliderGrp(field=True, min=0.1, max=5.0, value=1.0, label="Wiggle Frequency:")
+    wiggle_distance_field = cmds.intSliderGrp(field=True, min=1, max=10, value=1, label="Frame Distance:")
+    wiggle_intensity_field = cmds.floatSliderGrp(field=True, min=0.1, max=3.0, value=1.0, label="Wiggle Intensity:")
+    
+    cmds.button(label="Apply Wiggle Effect", command=lambda _: apply_wiggle_effect(
+        cmds.floatSliderGrp(wiggle_amplitude_field, query=True, value=True),
+        cmds.floatSliderGrp(wiggle_frequency_field, query=True, value=True),
+        cmds.intSliderGrp(wiggle_distance_field, query=True, value=True),
+        cmds.floatSliderGrp(wiggle_intensity_field, query=True, value=True)
+    ), bgc=(1, 0.5, 0.5))
+    
+    cmds.showWindow(window)
+
+def initialize_plugin():
+    create_ui()
+
+# Run the UI when script executes
+initialize_plugin()
