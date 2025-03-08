@@ -301,6 +301,127 @@ def create_ui():
 
 def initialize_plugin():
     create_ui()
+import maya.cmds as cmds
+try:
+    from PySide2 import QtWidgets, QtGui, QtCore
+    from shiboken2 import wrapInstance
+except ImportError:
+    from PySide6 import QtWidgets, QtGui, QtCore
+    from shiboken6 import wrapInstance
+import maya.OpenMayaUI as omui
+
+def set_pivot(position):
+    selection = cmds.ls(selection=True)
+    if not selection:
+        cmds.warning("No object selected!")
+        return
+    
+    for obj in selection:
+        if cmds.objectType(obj) == 'transform':  # Only for transform nodes
+            # Reset the scale to avoid any distortions from previous scaling
+            cmds.setAttr(f"{obj}.scale", 1, 1, 1)
+
+            # Get the world bounding box for accurate pivot calculation
+            bbox = cmds.exactWorldBoundingBox(obj)
+            center_x = (bbox[0] + bbox[3]) / 2
+            center_y = (bbox[1] + bbox[4]) / 2
+            center_z = (bbox[2] + bbox[5]) / 2
+
+            pivot_positions = {
+                0: (bbox[0], bbox[1], bbox[2]),  # Bottom-back-left
+                1: (bbox[3], bbox[1], bbox[2]),  # Bottom-back-right
+                2: (bbox[3], bbox[1], bbox[5]),  # Bottom-front-right
+                3: (bbox[0], bbox[1], bbox[5]),  # Bottom-front-left
+                4: (bbox[0], bbox[4], bbox[2]),  # Top-back-left
+                5: (bbox[3], bbox[4], bbox[2]),  # Top-back-right
+                6: (bbox[3], bbox[4], bbox[5]),  # Top-front-right
+                7: (bbox[0], bbox[4], bbox[5]),  # Top-front-left
+                8: (center_x, center_y, center_z),  # Center
+                9: (center_x, center_y, center_z)  # Center pivot (same as 8, but for clarity)
+            }
+            
+            if position in pivot_positions:
+                # Apply pivot in world space
+                cmds.xform(obj, pivots=pivot_positions[position], worldSpace=True)
+            else:
+                cmds.warning("Invalid pivot position!")
+
+class PivotChangerUI(QtWidgets.QMainWindow):
+    def __init__(self, parent=None):
+        super(PivotChangerUI, self).__init__(parent)
+        self.setWindowTitle("Pivot Changer")
+        self.setGeometry(300, 300, 400, 400)
+        
+        # Central widget and scene
+        self.central_widget = QtWidgets.QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        self.layout = QtWidgets.QVBoxLayout(self.central_widget)
+
+        # Create a QGraphicsView for the cube
+        self.scene = QtWidgets.QGraphicsScene()
+        self.view = QtWidgets.QGraphicsView(self.scene)
+        self.layout.addWidget(self.view)
+
+        # Add the "Center Pivot" button
+        self.center_button = QtWidgets.QPushButton("Center Pivot", self)
+        self.center_button.clicked.connect(self.set_center_pivot)
+        self.layout.addWidget(self.center_button)
+
+        self.draw_wireframe()
+
+    def apply_perspective(self, point, depth=0):
+        """Apply a simple perspective effect to make it look 3D."""
+        perspective_factor = 500 / (500 + depth)  # Adjust the divisor to control the perspective effect
+        return (point[0] * perspective_factor, point[1] * perspective_factor)
+
+    def draw_wireframe(self):
+        size = 200  # Size of the object
+        half = size / 2
+        points = [
+            (-half, -half, -half), (half, -half, -half), (half, half, -half), (-half, half, -half),
+            (-half, -half, half), (half, -half, half), (half, half, half), (-half, half, half)
+        ]
+        
+        # Apply perspective to each point
+        points_perspective = [self.apply_perspective((x, y), z) for x, y, z in points]
+
+        edges = [
+            (0, 1), (1, 2), (2, 3), (3, 0),
+            (4, 5), (5, 6), (6, 7), (7, 4),
+            (0, 4), (1, 5), (2, 6), (3, 7)
+        ]
+        
+        # Draw the wireframe for polygons (a generalized wireframe)
+        for edge in edges:
+            line = QtWidgets.QGraphicsLineItem(*points_perspective[edge[0]], *points_perspective[edge[1]])
+            pen = QtGui.QPen(QtCore.Qt.white)
+            line.setPen(pen)
+            self.scene.addItem(line)
+
+        # Add points at the corners (no blue or green dots)
+        for i, pos in enumerate(points_perspective):
+            btn = QtWidgets.QGraphicsEllipseItem(pos[0] - 5, pos[1] - 5, 10, 10)
+            btn.setBrush(QtGui.QBrush(QtCore.Qt.red))  # Corner points are red
+            btn.setData(0, i)
+            btn.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
+            btn.mousePressEvent = lambda event, index=i: set_pivot(index)
+            self.scene.addItem(btn)
+
+    def set_center_pivot(self):
+        """Set the pivot to the center of the selected object."""
+        set_pivot(8)
+
+def show_ui():
+    global ui
+    try:
+        ui.close()
+    except:
+        pass
+    parent = wrapInstance(int(omui.MQtUtil.mainWindow()), QtWidgets.QWidget)
+    ui = PivotChangerUI(parent)
+    ui.show()
+
+show_ui()
 
 # Run the UI when script executes
 initialize_plugin()
